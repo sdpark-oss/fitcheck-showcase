@@ -182,6 +182,8 @@
         dev: "기술 스택 (프로토타입)\n• 단일 HTML + Tailwind CSS (CDN) + Vanilla JS + Pretendard\n• LLM: Google Gemini 3.1 Flash Lite Preview (클라이언트 직접 호출)\n• Temperature: 0.8 (프로토타입 기준)\n\nAI 프롬프트 구조\n• 복종별 8개 전용 프롬프트: 일반 4종(아우터/상의/원피스/하의) + 골프 4종\n• 역할: 15년 경력 백화점 피팅 어드바이저 + 복종별 핏 전문가\n• 출력: 2줄 텍스트 (전반적인 사이즈 감 + MD의 한마디)\n• 핵심 원칙: 실측 기반 판단, 없는 정보 추정 금지, 사이즈 업/다운 제안 금지\n• 폴백: API 실패 시 회귀분석 기반 하드코딩 로직으로 대체\n\n회귀분석 폴백 로직\n• 키/몸무게 → 체형 추정 (가슴/어깨/허리/힙/허벅지)\n• 복종별 여유량 기준표로 fit/tight/loose 판정\n\n데모 상품: 11개 (키츠네 후디, 폴로 니트, 라코스테 가디건 외 8개)\n\n프로덕션 예정 스택: Next.js 14, TypeScript, TailwindCSS, Supabase",
         protoUrl: "fitcheck.html",
         protoNote: "상세 설명 페이지 보기",
+        cardBtnLabel: "상품 소개 페이지 보기",
+        cardBtnUrl: "fitcheck.html",
         nextStep: "디자이너 검토 → Figma 전환 → Gemini API 서버사이드 이동 → 프로덕션 스택(Next.js) 마이그레이션"
       },
       {
@@ -198,6 +200,8 @@
         dev: "기술 스택: HTML, CSS, JavaScript, Chart.js\n데이터: JSON 파일 분리 (data/events.json)\n노션 DB 스키마: 5개 DB 설계 완료\n향후: 노션 API 연동 검토",
         protoUrl: "https://md-dashboard-4s3.pages.dev",
         protoNote: "대시보드 프로토타입 보기",
+        cardBtnLabel: "대시보드 보기",
+        cardBtnUrl: "https://md-dashboard-4s3.pages.dev",
         nextStep: "엘리/앤처스 이벤트 데이터 추가 \u2192 추가 디자인 피드백 \u2192 노션 API 연동 검토"
       }
     ];
@@ -310,10 +314,13 @@
     PRODUCTS.forEach((p, i) => {
       const s = STATUS_STYLES[p.status] || STATUS_STYLES["프로토타입"];
       grid.innerHTML += `
-        <a href="#detail-${p.id}" class="reveal group block bg-surface border border-mist rounded-2xl p-5 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(26,26,26,0.08)] hover:border-pebble" style="transition-delay:${i * 0.1}s">
-          <!-- Screenshot placeholder -->
+        <div class="reveal group block bg-surface border border-mist rounded-2xl p-5 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(26,26,26,0.08)] hover:border-pebble" style="transition-delay:${i * 0.1}s">
+          <!-- Screenshot -->
           <div class="w-full aspect-[16/10] rounded-xl bg-elevated mb-5 flex items-center justify-center overflow-hidden">
-            <span class="text-[32px] font-bold text-pebble/30 select-none">${p.name}</span>
+            ${p.cardBtnUrl && p.cardBtnUrl.startsWith('http')
+              ? `<iframe src="${p.cardBtnUrl}" style="width:200%;height:200%;transform:scale(0.5);transform-origin:0 0;pointer-events:none;border:none;" loading="lazy"></iframe>`
+              : `<span class="text-[32px] font-bold text-pebble/30 select-none">${p.name}</span>`
+            }
           </div>
           <!-- Status badge -->
           <span class="inline-block px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.03em]" style="color:${s.text};background:${s.bg}">${p.status}</span>
@@ -326,9 +333,15 @@
           <div class="mt-3 flex flex-wrap gap-1.5">
             ${p.tags.map(t => `<span class="px-2.5 py-1 rounded-md bg-elevated text-[13px] text-stone">${t}</span>`).join('')}
           </div>
-          <!-- CTA -->
-          <p class="mt-5 text-[14px] font-medium text-navy flex items-center gap-1 group-hover:gap-2.5 transition-all duration-300">자세히 보기 <span class="transition-transform duration-300 group-hover:translate-x-1">&rarr;</span></p>
-        </a>
+          <!-- Buttons -->
+          <div class="mt-5 flex flex-wrap gap-2">
+            <a href="#detail-${p.id}" class="inline-flex items-center gap-1 px-4 py-2.5 rounded-xl bg-elevated text-[13px] font-medium text-stone hover:text-ink transition-colors">자세히 보기 <span>&rarr;</span></a>
+            ${p.cardBtnUrl
+              ? `<a href="${p.cardBtnUrl}" target="${p.cardBtnUrl.startsWith('http') ? '_blank' : '_self'}" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-navy text-[13px] font-semibold text-white hover:bg-navy-hover transition-colors">${p.cardBtnLabel} <span>&rarr;</span></a>`
+              : ''
+            }
+          </div>
+        </div>
       `;
     });
 
