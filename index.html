@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>blue.proto — AI prototypes by blue</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F6F4F1;
+      --surface: #FFFFFF;
+      --surface-elevated: #EDEAE6;
+      --text-primary: #1A1A1A;
+      --text-secondary: #6B6560;
+      --text-tertiary: #A9A4A0;
+      --border: #E0DCD8;
+      --accent: #1B2A4A;
+      --accent-hover: #2A3D66;
+      --accent-subtle: #E8ECF3;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      font-family: 'Pretendard', 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+    }
+
+    body { overflow-x: hidden; }
+
+    /* Scroll progress bar — Developer Gift #1 */
+    #scroll-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+      width: 0%;
+      z-index: 1000;
+      transition: width 0.1s linear;
+    }
+
+    /* Scroll-reveal animation */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; transform: none; transition: none; }
+      #scroll-progress { transition: none; }
+    }
+
+    /* Command Palette — Developer Gift #2 */
+    .cmd-palette-overlay {
+      position: fixed; inset: 0;
+      background: rgba(26,26,26,0.5);
+      backdrop-filter: blur(8px);
+      z-index: 9998;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .cmd-palette-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .cmd-palette {
+      position: fixed;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%) scale(0.96);
+      width: min(520px, 90vw);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 24px 80px rgba(26,26,26,0.18);
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      overflow: hidden;
+    }
+    .cmd-palette.active {
+      opacity: 1;
+      pointer-events: all;
+      transform: translateX(-50%) scale(1);
+    }
+    .cmd-palette input {
+      width: 100%;
+      padding: 18px 20px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      font-family: inherit;
+      background: transparent;
+      border-bottom: 1px solid var(--border);
+    }
+    .cmd-results {
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .cmd-item {
+      padding: 12px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: var(--text-primary);
+      transition: background 0.15s;
+    }
+    .cmd-item:hover, .cmd-item.selected {
+      background: var(--surface-elevated);
+    }
+    .cmd-item .cmd-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: var(--accent-subtle);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .cmd-item .cmd-label { flex: 1; }
+    .cmd-item .cmd-hint {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            snow: '#F6F4F1',
+            surface: '#FFFFFF',
+            elevated: '#EDEAE6',
+            ink: '#1A1A1A',
+            stone: '#6B6560',
+            pebble: '#A9A4A0',
+            mist: '#E0DCD8',
+            navy: '#1B2A4A',
+            'navy-hover': '#2A3D66',
+            'navy-subtle': '#E8ECF3',
+          },
+          maxWidth: {
+            layout: '1120px',
+          },
+          fontFamily: {
+            sans: ['Pretendard', 'Inter', '-apple-system', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <script>
+    // ── Product Data ──
+    const PRODUCTS = [
+      {
+        id: "fitcheck",
+        name: "FitCheck",
+        status: "프로토타입",
+        channel: "Antures (앤처스)",
+        oneLiner: "AI가 사이즈 핏을 상담해주는 구매전환율 향상 도구",
+        tags: ["Gemini AI", "사이즈 핏", "커머스"],
+        problem: "앤처스는 중고 리셀 특성상 상품마다 재고가 1개(사이즈 하나)뿐. 고객은 '이 옷이 나한테 맞을까?' 불안 때문에 구매를 망설임. 사이즈 문의가 CS의 큰 비중을 차지하고, 이 불안을 해소하면 구매전환율 개선 가능.",
+        idea: "S/M/L 선택이 아니라 '이 한 벌이 나한테 맞는가'에 답하는 AI 핏 상담. 15년 경력 백화점 피팅 어드바이저 역할의 Gemini AI가 상품 실측과 고객 체형을 비교하여 5단계 판정. 판정은 냉정하게, 말투만 부드럽게.",
+        planning: "핏 확인 플로우\n• 상품 상세 페이지 사이즈 영역에 \"이 사이즈, 나한테 맞을까?\" 미니 CTA 배치\n• 바텀시트 오픈 → 성별/키/몸무게 입력 (성별은 상품 정보에서 자동 선택)\n• Gemini AI API 호출 → 5단계 판정 결과 표시\n• 결과 확인 후 미니 CTA 상태 변환 (판정별 색상 연동)\n\nUX 설계 원칙\n• Anxiety → Confidence 전환: 사이즈 불안 해소로 구매전환율 향상\n• Zero Page Transition: 바텀시트로 페이지 이탈 없이 완료\n• Disclaimer → Reassurance: '정확하지 않을 수 있습니다' 대신 '무료 반품 가능'\n• 사이즈 대안 제안 금지: 리셀 특성상 1개 사이즈만 존재\n• 판정 색상 = 안심 톤: 빨강(경고) 사용 금지, 타이트도 주황으로 표현\n• 44px 터치 타겟 확보",
+        design: "UI 구성\n• 바텀시트 입력: 성별 2버튼 + 키/몸무게 2필드 (간결한 폼)\n• 바텀시트 결과: 종합 판정 뱃지(pill) + 사이즈 적합도 게이지(5단계) + MD의 한마디 + 장바구니 CTA\n• 미니 CTA 상태 변환: 판정별 색상 연동 (타이트=주황, 잘맞음=초록, 여유=파랑, 큼=인디고)\n\n5단계 판정 UI 매핑\n• 타이트한 편 (10%, #EA580C 주황)\n• 약간 타이트한 편 (30%, #FB923C 주황)\n• 잘 맞는 편 (50%, #4ADE80 초록)\n• 약간 여유 있는 편 (70%, #60A5FA 파랑)\n• 크게 느껴질 수 있음 (90%, #818CF8 인디고)\n\n디자인 토큰: CTA 16px radius 통일, 카드/입력 12px, 뱃지 6px\n앤처스 옐로우(#F7E636) 브랜드 컬러 활용",
+        dev: "기술 스택 (프로토타입)\n• 단일 HTML + Tailwind CSS (CDN) + Vanilla JS + Pretendard\n• LLM: Google Gemini 3.1 Flash Lite Preview (클라이언트 직접 호출)\n• Temperature: 0.8 (프로토타입 기준)\n\nAI 프롬프트 구조\n• 복종별 8개 전용 프롬프트: 일반 4종(아우터/상의/원피스/하의) + 골프 4종\n• 역할: 15년 경력 백화점 피팅 어드바이저 + 복종별 핏 전문가\n• 출력: 2줄 텍스트 (전반적인 사이즈 감 + MD의 한마디)\n• 핵심 원칙: 실측 기반 판단, 없는 정보 추정 금지, 사이즈 업/다운 제안 금지\n• 폴백: API 실패 시 회귀분석 기반 하드코딩 로직으로 대체\n\n회귀분석 폴백 로직\n• 키/몸무게 → 체형 추정 (가슴/어깨/허리/힙/허벅지)\n• 복종별 여유량 기준표로 fit/tight/loose 판정\n\n데모 상품: 11개 (키츠네 후디, 폴로 니트, 라코스테 가디건 외 8개)\n\n프로덕션 예정 스택: Next.js 14, TypeScript, TailwindCSS, Supabase",
+        protoUrl: "fitcheck.html",
+        protoNote: "상세 설명 페이지 보기",
+        nextStep: "디자이너 검토 → Figma 전환 → Gemini API 서버사이드 이동 → 프로덕션 스택(Next.js) 마이그레이션"
+      },
+      {
+        id: "md-dashboard",
+        name: "MD 대시보드",
+        status: "프로토타입",
+        channel: "OLO \u00b7 엘리 \u00b7 Antures",
+        oneLiner: "3채널 통합 이벤트 데이터 분석 대시보드",
+        tags: ["데이터", "대시보드", "Chart.js"],
+        problem: "마들렌 메모리 3개 채널의 이벤트/기획전 데이터를 매번 수동으로 정리. 이벤트 간 비교가 어렵고, 과거 데이터 기반 다음 기획 디벨롭이 비효율적.",
+        idea: "이벤트 종료 후 JSON 데이터만 추가하면 자동으로 KPI\u00b7차트\u00b7비교가 생성되는 사내 대시보드. 직전 이벤트와 자동 비교.",
+        planning: "구조\n\u2022 홈: 채널 카드 3개 + 최근 이벤트 리스트\n\u2022 채널 탭: OLO / 엘리 / Antures\n\u2022 사이드바: 이벤트 목록 (연도별)\n\u2022 JSON 데이터 분리 \u2014 이벤트 추가 시 data/events.json만 수정\n\nKPI: 할인상품 매출, 판매 건수, 소진율, 건당 매출, 반품률",
+        design: "톤: Dark Minimal (Linear + 롱블랙)\n\u2022 배경 #0A0A0A, Surface #161618, Accent #E8FF47 (라임)\n\u2022 폰트: Pretendard, tabular-nums\n\u2022 Up: #30D158, Down: #FF453A\n\n차트: KPI 카드, 일자별 매출, 복종별 도넛, 할인율 바, 히트맵, 반품 분석",
+        dev: "기술 스택: HTML, CSS, JavaScript, Chart.js\n데이터: JSON 파일 분리 (data/events.json)\n노션 DB 스키마: 5개 DB 설계 완료\n향후: 노션 API 연동 검토",
+        protoUrl: null,
+        protoNote: "로컬 프로토타입 — dashboard.html",
+        nextStep: "엘리/앤처스 이벤트 데이터 추가 \u2192 추가 디자인 피드백 \u2192 노션 API 연동 검토"
+      }
+    ];
+
+    const STATUS_STYLES = {
+      "프로토타입": { text: "#8B6914", bg: "#FFF8E7" },
+      "개발중":     { text: "#1B6B4A", bg: "#E7F5EF" },
+      "완료":       { text: "#1B2A4A", bg: "#E8ECF3" },
+      "중단":       { text: "#8B4B4B", bg: "#FAEDED" },
+    };
+  </script>
+</head>
+<body class="bg-snow text-ink">
+
+  <!-- Scroll Progress Bar -->
+  <div id="scroll-progress"></div>
+
+  <!-- Command Palette Overlay -->
+  <div class="cmd-palette-overlay" id="cmdOverlay"></div>
+  <div class="cmd-palette" id="cmdPalette">
+    <input type="text" id="cmdInput" placeholder="검색하거나 이동할 섹션을 입력하세요..." autocomplete="off">
+    <div class="cmd-results" id="cmdResults"></div>
+  </div>
+
+  <!-- ═══ NAV ═══ -->
+  <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-snow/80 border-b border-mist">
+    <div class="max-w-layout mx-auto flex items-center justify-between h-[60px] px-5 md:px-8 lg:px-12">
+      <a href="#" class="text-[18px] font-bold tracking-[-0.02em] text-navy">blue.proto</a>
+      <div class="flex items-center gap-6">
+        <a href="#products" class="text-[14px] text-stone hover:text-ink transition-colors">Products</a>
+        <a href="#about" class="text-[14px] text-stone hover:text-ink transition-colors">About</a>
+        <!-- Keyboard shortcut hint -->
+        <button onclick="openCmdPalette()" class="hidden sm:flex items-center gap-1.5 text-[12px] text-pebble border border-mist rounded-lg px-2.5 py-1.5 hover:border-stone transition-colors cursor-pointer" title="Command Palette">
+          <span class="font-mono">⌘</span><span class="font-mono">K</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══ HERO ═══ -->
+  <section class="pt-[140px] pb-[80px] md:pt-[180px] md:pb-[120px] px-5 md:px-8 lg:px-12">
+    <div class="max-w-layout mx-auto text-center">
+      <div class="reveal">
+        <h1 class="text-[40px] md:text-[56px] font-bold tracking-[-0.02em] leading-[1.2] text-ink">blue.proto</h1>
+        <p class="mt-3 text-[17px] md:text-[20px] text-stone leading-[1.7] tracking-[-0.01em]">AI prototypes by blue</p>
+      </div>
+      <div class="reveal mt-6">
+        <p class="text-[15px] md:text-[17px] text-pebble leading-[1.65]">MD가 Claude로 직접 만든 AI 프로토타입</p>
+      </div>
+      <div class="reveal mt-8">
+        <span id="product-count-badge" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-navy text-white text-[13px] font-semibold tracking-[0.01em]">
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ PRODUCTS ═══ -->
+  <section id="products" class="pb-[80px] md:pb-[120px] px-5 md:px-8 lg:px-12">
+    <div class="max-w-layout mx-auto">
+      <div class="reveal mb-10">
+        <h2 class="text-[24px] font-semibold tracking-[-0.01em] leading-[1.35] text-ink">Products</h2>
+      </div>
+      <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Cards rendered by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ PRODUCT DETAILS ═══ -->
+  <div id="product-details">
+    <!-- Detail sections rendered by JS -->
+  </div>
+
+  <!-- ═══ ABOUT ═══ -->
+  <section id="about" class="py-[80px] md:py-[120px] px-5 md:px-8 lg:px-12 bg-elevated/40">
+    <div class="max-w-layout mx-auto">
+      <div class="reveal max-w-[640px]">
+        <h2 class="text-[24px] font-semibold tracking-[-0.01em] leading-[1.35] text-ink mb-8">About</h2>
+        <div class="space-y-6">
+          <div>
+            <p class="text-[13px] font-medium text-pebble tracking-[0.01em] mb-2">만든 사람</p>
+            <p class="text-[17px] text-ink leading-[1.7]">blue</p>
+            <p class="text-[15px] text-stone leading-[1.65]">마들렌 메모리 MD — OLO, 엘리, 앤처스 3개 채널 단독 관리</p>
+          </div>
+          <div>
+            <p class="text-[13px] font-medium text-pebble tracking-[0.01em] mb-2">만든 이유</p>
+            <p class="text-[15px] text-stone leading-[1.65]">MD 업무에서 매일 반복되는 비효율을 줄이고 싶었습니다. 개발을 몰라도, Claude와 대화하면서 직접 프로토타입을 만들 수 있다는 걸 증명하고 싶었습니다. 기획자가 생각을 코드로 옮기는 시대, 그 가능성을 탐색하고 있습니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="py-8 px-5 md:px-8 lg:px-12 border-t border-mist">
+    <div class="max-w-layout mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+      <p class="text-[13px] text-pebble">&copy; 2026 blue.proto</p>
+      <p class="text-[13px] text-pebble">Last updated: 2026-03-22</p>
+    </div>
+  </footer>
+
+  <script>
+    // ── Render ──
+
+    // Badge
+    document.getElementById('product-count-badge').textContent = `${PRODUCTS.length} Products`;
+
+    // Product Cards
+    const grid = document.getElementById('product-grid');
+    PRODUCTS.forEach((p, i) => {
+      const s = STATUS_STYLES[p.status] || STATUS_STYLES["프로토타입"];
+      grid.innerHTML += `
+        <a href="#detail-${p.id}" class="reveal group block bg-surface border border-mist rounded-2xl p-5 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(26,26,26,0.08)] hover:border-pebble" style="transition-delay:${i * 0.1}s">
+          <!-- Screenshot placeholder -->
+          <div class="w-full aspect-[16/10] rounded-xl bg-elevated mb-5 flex items-center justify-center overflow-hidden">
+            <span class="text-[32px] font-bold text-pebble/30 select-none">${p.name}</span>
+          </div>
+          <!-- Status badge -->
+          <span class="inline-block px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.03em]" style="color:${s.text};background:${s.bg}">${p.status}</span>
+          <!-- Title -->
+          <h3 class="mt-3 text-[20px] font-semibold leading-[1.4] text-ink">${p.name}</h3>
+          <p class="mt-1 text-[15px] text-stone leading-[1.65]">${p.oneLiner}</p>
+          <!-- Channel -->
+          <p class="mt-3 text-[13px] text-pebble tracking-[0.01em]">${p.channel}</p>
+          <!-- Tags -->
+          <div class="mt-3 flex flex-wrap gap-1.5">
+            ${p.tags.map(t => `<span class="px-2.5 py-1 rounded-md bg-elevated text-[13px] text-stone">${t}</span>`).join('')}
+          </div>
+          <!-- CTA -->
+          <p class="mt-5 text-[14px] font-medium text-navy flex items-center gap-1 group-hover:gap-2.5 transition-all duration-300">자세히 보기 <span class="transition-transform duration-300 group-hover:translate-x-1">&rarr;</span></p>
+        </a>
+      `;
+    });
+
+    // Product Details
+    const details = document.getElementById('product-details');
+    PRODUCTS.forEach(p => {
+      const s = STATUS_STYLES[p.status] || STATUS_STYLES["프로토타입"];
+      details.innerHTML += `
+        <section id="detail-${p.id}" class="py-[80px] md:py-[120px] px-5 md:px-8 lg:px-12 border-t border-mist">
+          <div class="max-w-layout mx-auto">
+            <!-- Header -->
+            <div class="reveal mb-10">
+              <span class="inline-block px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.03em] mb-4" style="color:${s.text};background:${s.bg}">${p.status}</span>
+              <h2 class="text-[32px] font-bold tracking-[-0.015em] leading-[1.3] text-ink">${p.name}</h2>
+              <p class="mt-2 text-[17px] text-stone leading-[1.7]">${p.oneLiner}</p>
+              <p class="mt-2 text-[13px] text-pebble tracking-[0.01em]">${p.channel}</p>
+            </div>
+
+            <!-- WHY -->
+            <div class="reveal mb-10">
+              <h3 class="text-[13px] font-semibold text-pebble tracking-[0.03em] uppercase mb-3">Why — 문제 정의</h3>
+              <p class="text-[15px] text-stone leading-[1.65] max-w-[720px]">${p.problem}</p>
+            </div>
+
+            <!-- WHAT -->
+            <div class="reveal mb-10">
+              <h3 class="text-[13px] font-semibold text-pebble tracking-[0.03em] uppercase mb-3">What — 핵심 아이디어</h3>
+              <p class="text-[15px] text-stone leading-[1.65] max-w-[720px]">${p.idea}</p>
+            </div>
+
+            <!-- HOW — Tabs -->
+            <div class="reveal mb-10">
+              <h3 class="text-[13px] font-semibold text-pebble tracking-[0.03em] uppercase mb-4">How — 작동 방식</h3>
+              <div class="flex gap-1 mb-5 bg-elevated rounded-xl p-1 w-fit">
+                <button onclick="switchTab('${p.id}','planning')" class="tab-btn tab-btn-${p.id} px-4 py-2 rounded-lg text-[13px] font-medium transition-all" data-tab="planning">기획</button>
+                <button onclick="switchTab('${p.id}','design')" class="tab-btn tab-btn-${p.id} px-4 py-2 rounded-lg text-[13px] font-medium transition-all" data-tab="design">디자인</button>
+                <button onclick="switchTab('${p.id}','dev')" class="tab-btn tab-btn-${p.id} px-4 py-2 rounded-lg text-[13px] font-medium transition-all" data-tab="dev">개발</button>
+              </div>
+              <div class="tab-content tab-content-${p.id} bg-surface border border-mist rounded-2xl p-6" data-tab="planning">
+                <pre class="text-[15px] text-stone leading-[1.65] whitespace-pre-wrap font-sans">${p.planning}</pre>
+              </div>
+              <div class="tab-content tab-content-${p.id} bg-surface border border-mist rounded-2xl p-6 hidden" data-tab="design">
+                <pre class="text-[15px] text-stone leading-[1.65] whitespace-pre-wrap font-sans">${p.design}</pre>
+              </div>
+              <div class="tab-content tab-content-${p.id} bg-surface border border-mist rounded-2xl p-6 hidden" data-tab="dev">
+                <pre class="text-[15px] text-stone leading-[1.65] whitespace-pre-wrap font-sans">${p.dev}</pre>
+              </div>
+            </div>
+
+            <!-- Proto link -->
+            <div class="reveal mb-10">
+              <h3 class="text-[13px] font-semibold text-pebble tracking-[0.03em] uppercase mb-3">프로토타입</h3>
+              <p class="text-[15px] text-stone leading-[1.65]">${p.protoNote}</p>
+            </div>
+
+            <!-- Next Step -->
+            <div class="reveal">
+              <h3 class="text-[13px] font-semibold text-pebble tracking-[0.03em] uppercase mb-3">다음 스텝</h3>
+              <p class="text-[15px] text-stone leading-[1.65] max-w-[720px]">${p.nextStep}</p>
+            </div>
+
+            <!-- Back to top -->
+            <div class="reveal mt-12">
+              <a href="#products" class="inline-flex items-center gap-2 text-[14px] font-medium text-navy hover:text-navy-hover transition-colors">&larr; Products로 돌아가기</a>
+            </div>
+          </div>
+        </section>
+      `;
+    });
+
+    // ── Tab Switching ──
+    function switchTab(productId, tabName) {
+      // Content
+      document.querySelectorAll(`.tab-content-${productId}`).forEach(el => {
+        el.classList.toggle('hidden', el.dataset.tab !== tabName);
+      });
+      // Buttons
+      document.querySelectorAll(`.tab-btn-${productId}`).forEach(btn => {
+        const isActive = btn.dataset.tab === tabName;
+        btn.style.background = isActive ? '#FFFFFF' : 'transparent';
+        btn.style.color = isActive ? '#1A1A1A' : '#6B6560';
+        btn.style.boxShadow = isActive ? '0 1px 3px rgba(0,0,0,0.08)' : 'none';
+      });
+    }
+    // Init tabs
+    PRODUCTS.forEach(p => switchTab(p.id, 'planning'));
+
+    // ── Scroll Reveal (Intersection Observer) ──
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry, idx) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+    // ── Scroll Progress Bar ──
+    const progressBar = document.getElementById('scroll-progress');
+    window.addEventListener('scroll', () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      progressBar.style.width = pct + '%';
+    }, { passive: true });
+
+    // ── Command Palette (⌘K) — Developer Gift #2 ──
+    const cmdOverlay = document.getElementById('cmdOverlay');
+    const cmdPalette = document.getElementById('cmdPalette');
+    const cmdInput = document.getElementById('cmdInput');
+    const cmdResults = document.getElementById('cmdResults');
+
+    const CMD_ITEMS = [
+      { icon: '↑', label: '맨 위로 이동', action: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+      { icon: '□', label: 'Products', hint: '프로덕트 목록', action: () => document.getElementById('products').scrollIntoView({ behavior: 'smooth' }) },
+      { icon: '?', label: 'About', hint: '만든 사람 정보', action: () => document.getElementById('about').scrollIntoView({ behavior: 'smooth' }) },
+      ...PRODUCTS.map(p => ({
+        icon: '→', label: p.name, hint: p.oneLiner,
+        action: () => document.getElementById(`detail-${p.id}`).scrollIntoView({ behavior: 'smooth' })
+      }))
+    ];
+
+    let cmdSelectedIdx = 0;
+
+    function openCmdPalette() {
+      cmdOverlay.classList.add('active');
+      cmdPalette.classList.add('active');
+      cmdInput.value = '';
+      cmdSelectedIdx = 0;
+      renderCmdResults('');
+      setTimeout(() => cmdInput.focus(), 50);
+    }
+
+    function closeCmdPalette() {
+      cmdOverlay.classList.remove('active');
+      cmdPalette.classList.remove('active');
+    }
+
+    function renderCmdResults(query) {
+      const q = query.toLowerCase();
+      const filtered = CMD_ITEMS.filter(item =>
+        item.label.toLowerCase().includes(q) || (item.hint && item.hint.toLowerCase().includes(q))
+      );
+      cmdSelectedIdx = Math.min(cmdSelectedIdx, Math.max(0, filtered.length - 1));
+      cmdResults.innerHTML = filtered.map((item, i) => `
+        <div class="cmd-item ${i === cmdSelectedIdx ? 'selected' : ''}" data-idx="${i}">
+          <div class="cmd-icon">${item.icon}</div>
+          <div class="cmd-label">${item.label}</div>
+          ${item.hint ? `<div class="cmd-hint">${item.hint}</div>` : ''}
+        </div>
+      `).join('');
+      // Click handlers
+      cmdResults.querySelectorAll('.cmd-item').forEach((el, i) => {
+        el.addEventListener('click', () => {
+          filtered[i].action();
+          closeCmdPalette();
+        });
+      });
+      return filtered;
+    }
+
+    cmdInput.addEventListener('input', () => {
+      cmdSelectedIdx = 0;
+      renderCmdResults(cmdInput.value);
+    });
+
+    cmdInput.addEventListener('keydown', (e) => {
+      const filtered = CMD_ITEMS.filter(item => {
+        const q = cmdInput.value.toLowerCase();
+        return item.label.toLowerCase().includes(q) || (item.hint && item.hint.toLowerCase().includes(q));
+      });
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        cmdSelectedIdx = Math.min(cmdSelectedIdx + 1, filtered.length - 1);
+        renderCmdResults(cmdInput.value);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        cmdSelectedIdx = Math.max(cmdSelectedIdx - 1, 0);
+        renderCmdResults(cmdInput.value);
+      } else if (e.key === 'Enter' && filtered.length > 0) {
+        e.preventDefault();
+        filtered[cmdSelectedIdx].action();
+        closeCmdPalette();
+      } else if (e.key === 'Escape') {
+        closeCmdPalette();
+      }
+    });
+
+    cmdOverlay.addEventListener('click', closeCmdPalette);
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        if (cmdPalette.classList.contains('active')) {
+          closeCmdPalette();
+        } else {
+          openCmdPalette();
+        }
+      }
+      if (e.key === 'Escape' && cmdPalette.classList.contains('active')) {
+        closeCmdPalette();
+      }
+    });
+  </script>
+</body>
+</html>

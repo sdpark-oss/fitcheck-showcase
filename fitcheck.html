@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitCheck — AI 사이즈 핏 상담 도구</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+  <style>
+    /* ===================== RESET & TOKENS ===================== */
+    :root {
+      --bg: #0D0D0D;
+      --bg-alt: #141414;
+      --card: #1A1A1A;
+      --surface-raised: #222222;
+      --text: #FFFFFF;
+      --text-body: #E0E0E0;
+      --text-sub: #999999;
+      --text-muted: #666666;
+      --accent: #F7E636;
+      --accent-glow: rgba(247,230,54,0.15);
+      --border-subtle: rgba(255,255,255,0.06);
+      --verdict-green: #4ADE80;
+      --verdict-orange: #FB923C;
+      --verdict-blue: #60A5FA;
+      --verdict-indigo: #818CF8;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body { overflow-x: hidden; }
+
+    /* ===================== TYPOGRAPHY ===================== */
+    .t-display { font-size: 56px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+    .t-h1 { font-size: 40px; font-weight: 700; line-height: 1.2; }
+    .t-h2 { font-size: 28px; font-weight: 700; line-height: 1.3; }
+    .t-body { font-size: 16px; font-weight: 400; line-height: 1.75; color: var(--text-body); max-width: 680px; }
+    .t-caption { font-size: 12px; font-weight: 600; line-height: 1.5; }
+
+    .overline {
+      font-size: 12px; font-weight: 700; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--accent);
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 16px;
+    }
+    .overline::before {
+      content: ''; display: block; width: 24px; height: 1px; background: var(--accent);
+    }
+
+    /* ===================== LAYOUT ===================== */
+    .container {
+      max-width: 1280px; margin: 0 auto; padding: 0 64px;
+    }
+    .section {
+      min-height: 100vh; padding: 160px 0;
+      display: flex; align-items: center;
+    }
+    .section:nth-child(odd) { background: var(--bg); }
+    .section:nth-child(even) { background: var(--bg-alt); }
+
+    .two-col {
+      display: grid; grid-template-columns: 400px 1fr; gap: 80px; align-items: center; width: 100%;
+    }
+    .two-col.reversed {
+      grid-template-columns: 1fr 400px;
+    }
+
+    /* ===================== PHONE MOCKUP ===================== */
+    .phone-mockup {
+      width: 375px; min-height: 500px;
+      background: #000; border-radius: 40px;
+      border: 8px solid #2A2A2A;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.5), 0 0 120px rgba(247,230,54,0.04);
+      position: relative; overflow: hidden;
+    }
+    .phone-notch {
+      width: 150px; height: 30px;
+      background: #1A1A1A; border-radius: 0 0 20px 20px;
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      z-index: 10;
+    }
+    .phone-screen {
+      width: 100%; height: 100%;
+      overflow: hidden; position: relative;
+      border-radius: 32px;
+    }
+
+    /* ===================== COMPONENTS ===================== */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px; padding: 32px;
+    }
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: var(--accent-glow);
+      padding: 16px 20px;
+      border-radius: 0 12px 12px 0;
+      color: var(--text-body);
+      font-size: 14px; line-height: 1.6;
+    }
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 6px 14px; border-radius: 100px;
+      font-size: 13px; font-weight: 700;
+    }
+    .badge-accent {
+      background: var(--accent); color: #000;
+    }
+
+    /* ===================== NAV ===================== */
+    .top-nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(13,13,13,0.85);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: transform 0.3s;
+    }
+    .top-nav .nav-inner {
+      max-width: 1280px; margin: 0 auto; padding: 0 64px;
+      display: flex; align-items: center; height: 56px; gap: 32px;
+    }
+    .top-nav .logo {
+      font-size: 16px; font-weight: 700; color: var(--accent);
+      text-decoration: none; letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+    .top-nav .nav-links {
+      display: flex; gap: 24px; list-style: none;
+    }
+    .top-nav .nav-links a {
+      font-size: 13px; font-weight: 500; color: var(--text-muted);
+      text-decoration: none; transition: color 0.2s;
+      white-space: nowrap;
+    }
+    .top-nav .nav-links a:hover,
+    .top-nav .nav-links a.active {
+      color: var(--text);
+    }
+
+    /* Side dots */
+    .side-dots {
+      position: fixed; right: 32px; top: 50%; transform: translateY(-50%);
+      z-index: 99; display: flex; flex-direction: column; gap: 12px;
+    }
+    .side-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--text-muted); cursor: pointer;
+      transition: all 0.3s; position: relative;
+    }
+    .side-dot.active {
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .side-dot .dot-label {
+      position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+      font-size: 11px; font-weight: 600; color: var(--text-sub);
+      white-space: nowrap; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+      background: var(--card); padding: 4px 10px; border-radius: 6px;
+    }
+    .side-dot:hover .dot-label { opacity: 1; }
+
+    /* ===================== ANIMATIONS ===================== */
+    .reveal {
+      opacity: 0; transform: translateY(40px);
+      transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
+    .reveal.visible {
+      opacity: 1; transform: translateY(0);
+    }
+    .reveal-mockup {
+      opacity: 0; transform: translateY(60px) scale(0.97);
+      transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
+    }
+    .reveal-mockup.visible {
+      opacity: 1; transform: translateY(0) scale(1);
+    }
+    .stagger-1 { transition-delay: 0.1s; }
+    .stagger-2 { transition-delay: 0.2s; }
+    .stagger-3 { transition-delay: 0.3s; }
+    .stagger-4 { transition-delay: 0.4s; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal, .reveal-mockup { opacity: 1; transform: none; transition: none; }
+    }
+
+    /* Scroll progress */
+    #scroll-progress {
+      position: fixed; top: 56px; left: 0; height: 2px;
+      background: var(--accent); width: 0%; z-index: 101;
+      transition: width 0.1s linear;
+    }
+
+    /* ===================== SECTION-SPECIFIC ===================== */
+
+    /* Hero gradient */
+    .hero-glow {
+      position: absolute; top: -200px; right: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(247,230,54,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Data cards */
+    .data-card {
+      background: var(--card); border: 1px solid var(--border-subtle);
+      border-radius: 16px; padding: 32px; text-align: center;
+    }
+    .data-card .data-number {
+      font-size: 48px; font-weight: 700; color: var(--accent); line-height: 1;
+      margin-bottom: 12px;
+    }
+
+    /* Flow steps */
+    .flow-steps {
+      display: flex; gap: 0; align-items: stretch; width: 100%;
+    }
+    .flow-step {
+      flex: 1; text-align: center; position: relative; padding: 24px 12px;
+    }
+    .flow-step-num {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--accent); color: #000;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px; margin: 0 auto 12px;
+    }
+    .flow-step-arrow {
+      position: absolute; right: -8px; top: 34px;
+      color: var(--text-muted); font-size: 16px;
+    }
+
+    /* Design principle cards */
+    .principle-card {
+      background: var(--card); border: 1px solid var(--border-subtle);
+      border-radius: 16px; padding: 24px;
+    }
+    .principle-card .principle-icon {
+      font-size: 24px; margin-bottom: 12px;
+    }
+
+    /* Tech table */
+    .tech-table {
+      width: 100%; border-collapse: collapse;
+    }
+    .tech-table th, .tech-table td {
+      padding: 14px 16px; text-align: left; font-size: 14px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .tech-table th {
+      color: var(--text-sub); font-weight: 600; width: 140px;
+    }
+    .tech-table td { color: var(--text-body); }
+
+    /* Before/After */
+    .ba-container {
+      display: flex; gap: 32px; align-items: center;
+    }
+    .ba-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 8px; text-align: center;
+    }
+
+    /* Gauge for verdict colors table */
+    .color-swatch {
+      width: 16px; height: 16px; border-radius: 50%; display: inline-block; vertical-align: middle;
+    }
+
+    /* ===================== KEYBOARD SHORTCUT HINT ===================== */
+    .kbd {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 2px 8px; border-radius: 5px;
+      background: var(--surface-raised); border: 1px solid var(--border-subtle);
+      font-size: 11px; font-weight: 600; color: var(--text-sub);
+      font-family: 'Pretendard', monospace;
+    }
+
+    /* ===================== TOC PANEL (Gift #1) ===================== */
+    .toc-panel {
+      position: fixed; top: 56px; left: 0; bottom: 0; width: 320px;
+      background: rgba(13,13,13,0.96); backdrop-filter: blur(20px);
+      z-index: 98; transform: translateX(-100%);
+      transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+      padding: 32px; overflow-y: auto;
+      border-right: 1px solid var(--border-subtle);
+    }
+    .toc-panel.open { transform: translateX(0); }
+    .toc-panel h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-muted); margin-bottom: 16px; }
+    .toc-panel a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 8px;
+      font-size: 13px; font-weight: 500; color: var(--text-sub);
+      text-decoration: none; transition: all 0.2s;
+    }
+    .toc-panel a:hover { background: var(--surface-raised); color: var(--text); }
+    .toc-panel a.active { color: var(--accent); background: var(--accent-glow); }
+    .toc-panel .toc-num {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: var(--surface-raised); display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: var(--text-muted); flex-shrink: 0;
+    }
+    .toc-panel a.active .toc-num { background: var(--accent); color: #000; }
+
+    /* Dark mode progress ring (Gift #2) */
+    .reading-progress {
+      position: fixed; bottom: 32px; right: 32px;
+      width: 48px; height: 48px; z-index: 99;
+      cursor: pointer;
+    }
+    .reading-progress svg { transform: rotate(-90deg); }
+    .reading-progress .progress-text {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      font-size: 11px; font-weight: 700; color: var(--text-sub);
+    }
+
+    /* ===================== RESPONSIVE ===================== */
+    @media (max-width: 1023px) {
+      .container { padding: 0 32px; }
+      .t-display { font-size: 40px; }
+      .t-h1 { font-size: 32px; }
+      .section { padding: 100px 0; min-height: auto; }
+      .two-col, .two-col.reversed {
+        grid-template-columns: 1fr; gap: 48px;
+      }
+      .two-col .mockup-col { order: -1; }
+      .phone-mockup { width: 320px; margin: 0 auto; }
+      .side-dots { display: none; }
+      .top-nav .nav-inner { padding: 0 32px; gap: 20px; }
+      .top-nav .nav-links { gap: 16px; }
+      .flow-steps { flex-direction: column; gap: 16px; }
+      .flow-step-arrow { display: none; }
+      .ba-container { flex-direction: column; }
+      .toc-panel { width: 280px; }
+      .arch-grid { grid-template-columns: 1fr !important; }
+    }
+    @media (max-width: 767px) {
+      .container { padding: 0 20px; }
+      .t-display { font-size: 32px; }
+      .t-h1 { font-size: 26px; }
+      .t-h2 { font-size: 22px; }
+      .section { padding: 80px 0; }
+      .phone-mockup { width: 280px; }
+      .top-nav .nav-links { display: none; }
+      .top-nav .nav-inner { padding: 0 20px; }
+      .reading-progress { bottom: 20px; right: 20px; width: 40px; height: 40px; }
+      .data-grid { grid-template-columns: 1fr !important; }
+      .ba-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+      .ba-grid > div:nth-child(2) { transform: rotate(90deg); margin: 0 auto; }
+      .arch-grid { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ============ TOP NAV ============ -->
+<nav class="top-nav" id="topNav">
+  <div class="nav-inner">
+    <a href="#hero" class="logo">FitCheck</a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#problem" data-nav="problem">Problem</a></li>
+      <li><a href="#solution" data-nav="solution">Solution</a></li>
+      <li><a href="#flow" data-nav="flow">Flow</a></li>
+      <li><a href="#screen01" data-nav="screen01">Screens</a></li>
+      <li><a href="#design" data-nav="design">Design</a></li>
+      <li><a href="#arch" data-nav="arch">Tech</a></li>
+      <li><a href="#demo" data-nav="demo">Demo</a></li>
+    </ul>
+    <button onclick="toggleToc()" style="background:none;border:none;cursor:pointer;padding:6px;" aria-label="목차 열기">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect y="3" width="18" height="1.5" rx="0.75" fill="var(--text-sub)"/><rect y="8.25" width="12" height="1.5" rx="0.75" fill="var(--text-sub)"/><rect y="13.5" width="15" height="1.5" rx="0.75" fill="var(--text-sub)"/></svg>
+    </button>
+  </div>
+</nav>
+
+<div id="scroll-progress"></div>
+
+<!-- ============ TOC PANEL (Gift #1) ============ -->
+<div class="toc-panel" id="tocPanel">
+  <h3>Table of Contents</h3>
+  <a href="#hero" data-toc="hero"><span class="toc-num">01</span> Hero</a>
+  <a href="#problem" data-toc="problem"><span class="toc-num">02</span> Problem</a>
+  <a href="#solution" data-toc="solution"><span class="toc-num">03</span> Solution</a>
+  <a href="#flow" data-toc="flow"><span class="toc-num">04</span> Flow</a>
+  <a href="#screen01" data-toc="screen01"><span class="toc-num">05</span> 상품 상세</a>
+  <a href="#screen02" data-toc="screen02"><span class="toc-num">06</span> 미니 CTA</a>
+  <a href="#screen03" data-toc="screen03"><span class="toc-num">07</span> 바텀시트 입력</a>
+  <a href="#screen04" data-toc="screen04"><span class="toc-num">08</span> 바텀시트 결과</a>
+  <a href="#screen05" data-toc="screen05"><span class="toc-num">09</span> 결과 반영</a>
+  <a href="#design" data-toc="design"><span class="toc-num">10</span> Design System</a>
+  <a href="#arch" data-toc="arch"><span class="toc-num">11</span> Architecture</a>
+  <a href="#demo" data-toc="demo"><span class="toc-num">12</span> Demo & Next</a>
+</div>
+
+<!-- ============ SIDE DOTS ============ -->
+<div class="side-dots" id="sideDots">
+  <div class="side-dot" data-target="hero"><span class="dot-label">Hero</span></div>
+  <div class="side-dot" data-target="problem"><span class="dot-label">Problem</span></div>
+  <div class="side-dot" data-target="solution"><span class="dot-label">Solution</span></div>
+  <div class="side-dot" data-target="flow"><span class="dot-label">Flow</span></div>
+  <div class="side-dot" data-target="screen01"><span class="dot-label">상품 상세</span></div>
+  <div class="side-dot" data-target="screen02"><span class="dot-label">미니 CTA</span></div>
+  <div class="side-dot" data-target="screen03"><span class="dot-label">바텀시트 입력</span></div>
+  <div class="side-dot" data-target="screen04"><span class="dot-label">바텀시트 결과</span></div>
+  <div class="side-dot" data-target="screen05"><span class="dot-label">결과 반영</span></div>
+  <div class="side-dot" data-target="design"><span class="dot-label">Design System</span></div>
+  <div class="side-dot" data-target="arch"><span class="dot-label">Architecture</span></div>
+  <div class="side-dot" data-target="demo"><span class="dot-label">Demo & Next</span></div>
+</div>
+
+<!-- Reading Progress Ring (Gift #2) -->
+<div class="reading-progress" id="readingProgress" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="맨 위로 이동">
+  <svg width="48" height="48" viewBox="0 0 48 48">
+    <circle cx="24" cy="24" r="20" fill="none" stroke="var(--surface-raised)" stroke-width="3"/>
+    <circle cx="24" cy="24" r="20" fill="none" stroke="var(--accent)" stroke-width="3"
+      stroke-dasharray="125.66" stroke-dashoffset="125.66" stroke-linecap="round" id="progressRing"/>
+  </svg>
+  <span class="progress-text" id="progressText">0%</span>
+</div>
+
+
+<!-- ====================================================================
+     SEC 01 — HERO
+     ==================================================================== -->
+<section class="section" id="hero" style="position:relative; overflow:hidden;">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="two-col">
+      <div>
+        <div class="overline reveal">FitCheck for Antures</div>
+        <h1 class="t-display reveal stagger-1" style="margin-bottom: 24px;">이 사이즈,<br>나한테 맞을까?</h1>
+        <p class="t-body reveal stagger-2" style="margin-bottom: 32px;">리세일 의류 패션몰 앤처스를 위한 AI 사이즈 핏 상담 도구</p>
+        <div class="reveal stagger-3" style="display:flex; gap:12px; flex-wrap:wrap;">
+          <span class="badge badge-accent">AI Fit Analysis</span>
+          <span class="badge" style="background:var(--surface-raised); color:var(--text-sub);">Prototype 2026</span>
+        </div>
+      </div>
+      <div class="mockup-col" style="display:flex; justify-content:center;">
+        <div class="phone-mockup reveal-mockup stagger-2" style="min-height:580px;">
+          <div class="phone-notch"></div>
+          <div class="phone-screen" style="background:#fff; padding-top:30px;">
+            <!-- Hero mockup: Result screen summary -->
+            <div style="padding:60px 24px 24px; text-align:center;">
+              <div style="font-size:13px; color:#999; margin-bottom:20px;">사이즈 핏 결과</div>
+              <div style="display:inline-flex; align-items:center; gap:6px; padding:8px 18px; border-radius:100px; background:#F0FDF4; margin-bottom:24px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
+                <span style="font-size:15px; font-weight:700; color:#166534;">잘 맞는 편이에요</span>
+              </div>
+              <div style="margin:24px auto; max-width:280px;">
+                <div style="display:flex; justify-content:space-between; font-size:10px; color:#bbb; margin-bottom:6px;">
+                  <span>타이트</span><span>잘 맞음</span><span>여유</span>
+                </div>
+                <div style="height:6px; background:#f3f4f6; border-radius:3px; position:relative;">
+                  <div style="position:absolute; left:0; top:0; height:100%; width:50%; border-radius:3px; background:linear-gradient(90deg,#FB923C,#4ADE80);"></div>
+                  <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:16px; height:16px; background:#4ADE80; border-radius:50%; border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.15);"></div>
+                </div>
+              </div>
+              <div style="background:#f8f8f8; border-radius:12px; padding:16px; margin-top:24px; text-align:left;">
+                <div style="font-size:11px; color:#999; margin-bottom:6px; font-weight:600;">MD의 한마디</div>
+                <div style="font-size:13px; color:#333; line-height:1.6;">어깨 라인은 여유 있게 떨어지되 가슴 단면은 몸에 정갈하게 안착되어 단정한 실루엣을 연출합니다.</div>
+              </div>
+              <div style="margin-top:24px; display:flex; gap:8px;">
+                <button style="flex:1; padding:14px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; font-size:13px; font-weight:600; color:#333; cursor:pointer;">다시 확인</button>
+                <button style="flex:1; padding:14px; border-radius:12px; border:none; background:#1A1A1A; font-size:13px; font-weight:600; color:#fff; cursor:pointer;">장바구니 담기</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================================================================
+     SEC 02 — PROBLEM
+     ==================================================================== -->
+<section class="section" id="problem">
+  <div class="container" style="width:100%;">
+    <div style="text-align:center; margin-bottom:80px;">
+      <div class="overline reveal" style="justify-content:center;">Problem</div>
+      <h2 class="t-h1 reveal stagger-1" style="margin-bottom:16px;">재고는 1개, 사이즈도 1개</h2>
+      <p class="t-body reveal stagger-2" style="margin:0 auto;">리세일 의류 상품은 교환이 안 됩니다. 사이즈가 안 맞으면, 구매를 포기합니다.</p>
+    </div>
+    <div class="data-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:24px; max-width:960px; margin:0 auto;">
+      <div class="data-card reveal stagger-1">
+        <div class="data-number">1개</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">단일 재고</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">리세일 의류 상품 특성상 같은 상품의 사이즈 옵션이 없습니다.</p>
+      </div>
+      <div class="data-card reveal stagger-2">
+        <div class="data-number" style="font-size:40px;">No.1</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">구매 망설임 요인</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">패션 이커머스에서 구매를 망설이게 만드는 가장 큰 요인 중 하나는 사이즈/핏에 대한 불안.</p>
+      </div>
+      <div class="data-card reveal stagger-3">
+        <div class="data-number" style="font-size:40px;">✕</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">교환 불가</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">리세일 의류 시장 특성상 교환이 불가. 반품만 가능하며 비용과 시간의 이중 손실.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================================================================
+     SEC 03 — SOLUTION
+     ==================================================================== -->
+<section class="section" id="solution">
+  <div class="container" style="width:100%;">
+    <div style="text-align:center; margin-bottom:80px;">
+      <div class="overline reveal" style="justify-content:center;">Solution</div>
+      <h2 class="t-h1 reveal stagger-1" style="margin-bottom:16px;">상품 페이지를 떠나지 않고,<br>3초 만에 핏 판정</h2>
+      <p class="t-body reveal stagger-2" style="margin:0 auto;">키와 몸무게만 입력하면 AI가 이 옷과 내 체형의 궁합을 알려줍니다.</p>
+    </div>
+    <div class="reveal stagger-3" style="max-width:800px; margin:0 auto;">
+      <div class="ba-grid" style="display:grid; grid-template-columns:1fr auto 1fr; gap:32px; align-items:start;">
+        <!-- Before -->
+        <div class="card" style="text-align:center;">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-bottom:16px;">Before</div>
+          <div style="font-size:40px; margin-bottom:12px;">😰</div>
+          <div style="font-size:15px; font-weight:600; margin-bottom:8px;">사이즈 불안</div>
+          <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">
+            "XL이면 나한테 클까?"<br>
+            "실측 표를 봐도 모르겠어"<br>
+            "일단 포기하자"
+          </p>
+        </div>
+        <!-- Arrow -->
+        <div style="display:flex; align-items:center; padding-top:60px;">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="24" fill="var(--accent-glow)"/>
+            <path d="M18 24h12m0 0l-4-4m4 4l-4 4" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <!-- After -->
+        <div class="card" style="text-align:center; border-color:rgba(247,230,54,0.2);">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent); margin-bottom:16px;">After</div>
+          <div style="font-size:40px; margin-bottom:12px;">😊</div>
+          <div style="font-size:15px; font-weight:600; margin-bottom:8px;">핏 확신</div>
+          <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">
+            "잘 맞는 편이래!"<br>
+            "키츠네는 오버핏이구나"<br>
+            "바로 장바구니"
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================================================================
+     SEC 04 — FLOW
+     ==================================================================== -->
+<section class="section" id="flow">
+  <div class="container" style="width:100%;">
+    <div style="text-align:center; margin-bottom:80px;">
+      <div class="overline reveal" style="justify-content:center;">Flow</div>
+      <h2 class="t-h1 reveal stagger-1" style="margin-bottom:16px;">5단계, 한 화면 안에서</h2>
+    </div>
+    <div class="flow-steps reveal stagger-2" style="max-width:960px; margin:0 auto;">
+      <div class="flow-step card">
+        <div class="flow-step-num">1</div>
+        <div style="font-size:14px; font-weight:700; margin-bottom:4px;">상품 탐색</div>
+        <div style="font-size:12px; color:var(--text-sub);">상품 상세 페이지 진입</div>
+        <div class="flow-step-arrow">→</div>
+      </div>
+      <div class="flow-step card">
+        <div class="flow-step-num">2</div>
+        <div style="font-size:14px; font-weight:700; margin-bottom:4px;">CTA 발견</div>
+        <div style="font-size:12px; color:var(--text-sub);">"이 사이즈, 맞을까?"</div>
+        <div class="flow-step-arrow">→</div>
+      </div>
+      <div class="flow-step card">
+        <div class="flow-step-num">3</div>
+        <div style="font-size:14px; font-weight:700; margin-bottom:4px;">정보 입력</div>
+        <div style="font-size:12px; color:var(--text-sub);">성별 · 키 · 몸무게</div>
+        <div class="flow-step-arrow">→</div>
+      </div>
+      <div class="flow-step card">
+        <div class="flow-step-num">4</div>
+        <div style="font-size:14px; font-weight:700; margin-bottom:4px;">결과 확인</div>
+        <div style="font-size:12px; color:var(--text-sub);">AI 핏 판정 + MD 코멘트</div>
+        <div class="flow-step-arrow">→</div>
+      </div>
+      <div class="flow-step card">
+        <div class="flow-step-num">5</div>
+        <div style="font-size:14px; font-weight:700; margin-bottom:4px;">구매 결정</div>
+        <div style="font-size:12px; color:var(--text-sub);">장바구니 담기</div>
+      </div>
+    </div>
+    <div class="callout reveal stagger-3" style="max-width:700px; margin:40px auto 0;">
+      페이지 이탈 없이, 바텀시트 안에서 모든 플로우가 완료됩니다.
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================================================================
+     SEC 05 — SCREEN 01 (상품 상세)
+     ==================================================================== -->
+<section class="section" id="screen01">
+  <div class="container">
+    <div class="two-col">
+      <div class="mockup-col" style="display:flex; justify-content:center;">
+        <div class="phone-mockup reveal-mockup" style="min-height:660px;">
+          <div class="phone-notch"></div>
+          <div class="phone-screen" style="background:#fff; padding-top:30px;">
+            <!-- Header -->
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; position:sticky; top:0; background:#fff; z-index:5;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.8"><path d="M15 19l-7-7 7-7"/></svg>
+              <div style="display:flex; gap:14px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.8"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              </div>
+            </div>
+            <!-- Product Image -->
+            <div style="background:#f5f5f5; height:220px; display:flex; align-items:center; justify-content:center;">
+              <svg width="110" height="110" viewBox="0 0 120 120" fill="none">
+                <path d="M60 20 C45 20, 25 30, 25 50 L25 95 C25 98, 28 100, 30 100 L50 100 L50 70 L70 70 L70 100 L90 100 C92 100, 95 98, 95 95 L95 50 C95 30, 75 20, 60 20Z" fill="#d1d5db"/>
+                <path d="M60 20 L50 30 L45 25 C45 25, 50 18, 60 18 C70 18, 75 25, 75 25 L70 30 Z" fill="#c0c4ca"/>
+                <rect x="48" y="30" width="24" height="4" rx="2" fill="#a0a4aa"/>
+              </svg>
+            </div>
+            <!-- Image indicators -->
+            <div style="display:flex; justify-content:center; gap:4px; padding:8px;">
+              <div style="width:20px; height:2px; background:#111; border-radius:1px;"></div>
+              <div style="width:20px; height:2px; background:#ddd; border-radius:1px;"></div>
+              <div style="width:20px; height:2px; background:#ddd; border-radius:1px;"></div>
+            </div>
+            <!-- Product Info -->
+            <div style="padding:0 16px 16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:12px; color:#999;">매종키츠네 <span style="font-size:10px;">›</span></span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+              </div>
+              <div style="font-size:13px; color:#111; margin-bottom:8px;">Maison Kitsune Sweatshirt/Hoodie</div>
+              <div style="display:flex; align-items:baseline; gap:6px;">
+                <span style="font-size:13px; font-weight:700; color:#ef4444;">58%</span>
+                <span style="font-size:18px; font-weight:700; color:#111;">120,000원</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:4px; margin-top:2px;">
+                <span style="font-size:12px; color:#bbb; text-decoration:line-through;">286,000원</span>
+                <span style="font-size:11px; color:#ccc;">ⓘ</span>
+              </div>
+              <!-- Review banner -->
+              <div style="background:#f9fafb; border-radius:10px; padding:8px 12px; text-align:center; font-size:12px; color:#555; margin-top:10px;">
+                리뷰 작성 시 최대 <span style="font-weight:700; color:#ef4444;">2,400 P</span> 적립
+              </div>
+              <!-- Size -->
+              <div style="border-top:1px solid #f3f4f6; margin-top:12px; padding-top:10px;">
+                <div style="display:flex; gap:8px; font-size:12px; margin-bottom:4px;">
+                  <span style="color:#999; width:36px; flex-shrink:0;">사이즈</span>
+                  <div>
+                    <span style="font-weight:600; color:#111;">남성, XL</span>
+                    <span style="color:#ccc; margin-left:4px; font-size:10px;">ⓘ</span>
+                  </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-left:44px;">
+                  <span style="font-size:11px; color:#999;">브랜드 사이즈 : XL</span>
+                  <span style="font-size:10px; color:#999; border:1px solid #e5e7eb; padding:2px 6px; border-radius:3px;">사이즈 상세 ›</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="overline reveal">Screen 01</div>
+        <h2 class="t-h1 reveal stagger-1" style="margin-bottom:16px;">출발점은<br>상품 페이지</h2>
+        <p class="t-body reveal stagger-2" style="margin-bottom:24px;">
+          고객이 상품 상세 페이지에 진입합니다. 브랜드명, 상품명, 가격, 할인율, 사이즈 정보가 한눈에 보이는 기존 커머스 UI입니다.
+        </p>
+        <p class="t-body reveal stagger-3">
+          사이즈 라벨 영역 바로 아래에 FitCheck 진입점이 자연스럽게 위치합니다.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================================================================
+     SEC 06 — SCREEN 02 (미니 CTA)
+     ==================================================================== -->
+<section class="section" id="screen02">
+  <div class="container">
+    <div class="two-col reversed">
+      <div>
+        <div class="overline reveal">Screen 02</div>
+        <h2 class="t-h1 reveal stagger-1" style="margin-bottom:16px;">사이즈 옆에,<br>딱 한 줄</h2>
+        <p class="t-body reveal stagger-2" style="margin-bottom:24px;">
+          사이즈 정보 바로 아래, 기존 UI의 흐름을 끊지 않으면서 자연스럽게 미니 CTA를 배치합니다.
+        </p>
+        <p class="t-body reveal stagger-3" style="margin-bottom:24px;">
+          앤처스 옐로우 아이콘으로 시선을 유도하되, 과하지 않은 톤으로 "한번 확인해볼래?"라는 가벼운 제안을 던집니다.
+        </p>
+        <div class="callout reveal stagger-4">
+          클릭률을 높이기 위해 서브텍스트로 진입 허들을 낮춥니다:<br>
+          <strong>"키·몸무게만 입력하면 바로 확인돼요"</strong>
+        </div>
+      </div>
+      <div class="mockup-col" style="display:flex; justify-content:center;">
+        <div class="phone-mockup reveal-mockup stagger-2" style="min-height:400px;">
+          <div class="phone-notch"></div>
+          <div class="phone-screen" style="background:#fff; padding-top:30px;">
+            <div style="padding:40px 16px 16px;">
+              <!-- Size area -->
+              <div style="border-top:1px solid #f3f4f6; padding-top:10px;">
+                <div style="display:flex; gap:8px; font-size:12px; margin-bottom:4px;">
+                  <span style="color:#999; width:36px; flex-shrink:0;">사이즈</span>
+                  <div>
+                    <span style="font-weight:600; color:#111;">남성, XL</span>
+                    <span style="color:#ccc; margin-left:4px; font-size:10px;">ⓘ</span>
+                  </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-left:44px; margin-bottom:8px;">
+                  <span style="font-size:11px; color:#999;">브랜드 사이즈 : XL</span>
+                  <span style="font-size:10px; color:#999; border:1px solid #e5e7eb; padding:2px 6px; border-radius:3px;">사이즈 상세 ›</span>
+                </div>
+              </div>
+              <!-- Mini CTA — highlighted -->
+              <div style="position:relative; margin-top:6px;">
+                <div style="position:absolute; inset:-6px; border-radius:18px; border:2px solid var(--accent); opacity:0.6; animation: pulse-border 2s infinite;"></div>
+                <div style="border:1px solid #e5e7eb; background:#fafafa; border-radius:12px; padding:10px 12px; display:flex; align-items:center; gap:10px; cursor:pointer;">
+                  <div style="width:26px; height:26px; border-radius:50%; background:#F7E636; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+                  </div>
+                  <div style="flex:1;">
+                    <div style="font-size:12px; font-weight:600; color:#111;">이 사이즈, 나한테 맞을까?</div>
+                    <div style="font-size:10px; color:#999; margin-top:2px;">키·몸무게만 입력하면 바로 확인돼요</div>
+                  </div>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
+                </div>
+              </div>
+              <!-- 반품 -->
+              <div style="margin-top:14px; border-top:1px solid #f3f4f6; padding-top:10px;">
+                <div style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:8px;">
+                  <span style="color:#999; width:36px; flex-shrink:0;">반품</span>
+                  <span>최초 1회 <span style="font-size:9px; font-weight:700; background:#F7E636; padding:2px 6px; border-radius:3px; color:#111;">무료 반품</span></span>
+                </div>
+                <!-- 배송 -->
+                <div style="display:flex; align-items:center; gap:8px; font-size:12px; border-top:1px solid #f3f4f6; padding-top:8px;">
+                  <span style="color:#999; width:36px; flex-shrink:0;">배송</span>
+                  <div style="display:flex; align-items:center; gap:5px;">
+                    <span style="font-size:9px; font-weight:700; background:#F7E636; padding:2px 6px; border-radius:3px; color:#111;">무료 배송</span>
+                    <span style="font-size:12px; color:#333;">당일 발송</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <style>
+    @keyframes pulse-border {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.8; }
+    }
+  </style>
+</section>
+
+
+<!-- ====================================================================
+     SEC 07 — SCREEN 03 (바텀시트 입력)
+     ==================================================================== -->
+<section class="section" id="screen03">
+  <div class="container">
+    <div class="two-col">
+      <div class="mockup-col" style="display:flex; justify-content:center;">
+        <div class="phone-mockup reveal-mockup" style="min-height:620px;">
+          <div class="phone-notch"></div>
+          <div class="phone-screen" style="background:#fff; padding-top:30px; position:relative;">
+            <!-- Overlay -->
+            <div style="position:absolute; inset:0; background:rgba(0,0,0,0.4); z-index:1; border-radius:32px;"></div>
+            <!-- Bottom Sheet -->
+            <div style="position:absolute; bottom:0; left:0; right:0; background:#fff; border-radius:20px 20px 0 0; z-index:2; padding:0 0 20px;">
+              <!-- Handle -->
+              <div style="display:flex; justify-content:center; padding:10px 0 6px;">
+                <div style="width:36px; height:4px; background:#ddd; border-radius:2px;"></div>
+              </div>
+              <!-- Title -->
+              <div style="padding:0 18px 12px; display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:15px; font-weight:700;">사이즈 핏 확인</span>
+                  <span style="font-size:9px; border:1px solid #d1d5db; color:#999; padding:1px 7px; border-radius:100px; font-weight:600;">Beta</span>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </div>
+              <!-- Product -->
+              <div style="padding:0 18px 14px; font-size:11px; color:#999; font-weight:500;">
+                Maison Kitsune Sweatshirt/Hoodie · 남성, XL
+              </div>
+              <!-- Gender -->
+              <div style="padding:0 18px 14px;">
+                <div style="font-size:11px; color:#555; margin-bottom:6px; font-weight:600;">성별</div>
+                <div style="display:flex; gap:8px;">
+                  <div style="flex:1; padding:10px; text-align:center; border-radius:10px; border:1px solid #e5e7eb; font-size:12px; color:#999;">여성</div>
+                  <div style="flex:1; padding:10px; text-align:center; border-radius:10px; background:#1A1A1A; font-size:12px; font-weight:600; color:#fff;">남성</div>
+                </div>
+              </div>
+              <!-- Height / Weight -->
+              <div style="padding:0 18px 14px; display:flex; gap:10px;">
+                <div style="flex:1;">
+                  <div style="font-size:11px; color:#555; margin-bottom:6px; font-weight:600;">키</div>
+                  <div style="display:flex; align-items:center; border:1px solid #e5e7eb; border-radius:10px; padding:10px 12px;">
+                    <span style="font-size:14px; font-weight:600; flex:1;">170</span>
+                    <span style="font-size:11px; color:#999;">cm</span>
+                  </div>
+                </div>
+                <div style="flex:1;">
+                  <div style="font-size:11px; color:#555; margin-bottom:6px; font-weight:600;">몸무게</div>
+                  <div style="display:flex; align-items:center; border:1px solid #e5e7eb; border-radius:10px; padding:10px 12px;">
+                    <span style="font-size:14px; font-weight:600; flex:1;">65</span>
+                    <span style="font-size:11px; color:#999;">kg</span>
+                  </div>
+                </div>
+              </div>
+              <!-- CTA -->
+              <div style="padding:0 18px;">
+                <div style="background:#1A1A1A; color:#fff; text-align:center; padding:14px; border-radius:14px; font-size:14px; font-weight:700; cursor:pointer;">
+                  핏 확인하기
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="overline reveal">Screen 03</div>
+        <h2 class="t-h1 reveal stagger-1" style="margin-bottom:16px;">입력은 3개,<br>시간은 5초</h2>
+        <p class="t-body reveal stagger-2" style="margin-bottom:24px;">
+          바텀시트가 올라오면 성별, 키, 몸무게 3개만 입력합니다. 상품의 성별 정보로 자동 선택되어 있어, 실제로는 키와 몸무게 2개만 입력하면 됩니다.
+        </p>
+        <p class="t-body reveal stagger-3" style="margin-bottom:24px;">
+          페이지 이탈 없이, 바텀시트 안에서 모든 것이 완료됩니다. 스크롤 체이닝도 방지하여 배경 페이지가 따라 움직이지 않습니다.
+        </p>
+        <div class="card reveal stagger-4" style="display:flex; gap:16px; flex-wrap:wrap;">
+          <span class="badge" style="background:var(--surface-raised); color:var(--text-sub);">성별 자동 선택</span>
+          <span class="badge" style="background:var(--surface-raised); color:var(--text-sub);">44px 터치 타겟</span>
+          <span class="badge" style="background:var(--surface-raised); color:var(--text-sub);">Beta 뱃지</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================================================================
+     SEC 08 — SCREEN 04 (바텀시트 결과)
+     ==================================================================== -->
+<section class="section" id="screen04">
+  <div class="container">
+    <div class="two-col reversed">
+      <div>
+        <div class="overline reveal">Screen 04</div>
+        <h2 class="t-h1 reveal stagger-1" style="margin-bottom:16px;">판정은 한눈에,<br>근거는 그 아래에</h2>
+        <p class="t-body reveal stagger-2" style="margin-bottom:24px;">
+          AI가 상품 실측 데이터와 고객 체형을 비교 분석하여, 5단계 핏 판정을 내립니다. 종합 뱃지로 결론을 먼저 보여주고, 게이지와 MD 코멘트로 근거를 제공합니다.
+        </p>
+
+        <!-- MD 한마디 역할 -->
+        <div class="card reveal stagger-3" style="padding:20px; margin-bottom:16px;">
+          <div style="font-size:13px; font-weight:700; margin-bottom:12px; color:var(--text-sub);">MD의 한마디 — 역할</div>
+          <p style="font-size:13px; color:var(--text-body); line-height:1.7; margin-bottom:12px;">
+            5단계 판정이 "맞는지 안 맞는지"를 알려준다면, MD의 한마디는 <strong>"그래서 이 옷을 어떻게 입으면 좋을지"</strong>를 자연어로 전달합니다.
+          </p>
+          <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
+            <div style="display:flex; gap:8px; align-items:start;">
+              <span style="color:var(--accent); flex-shrink:0;">•</span>
+              <span style="color:var(--text-body);">최종 판정을 부정하거나 뒤집지 않음</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:start;">
+              <span style="color:var(--accent); flex-shrink:0;">•</span>
+              <span style="color:var(--text-body);">핏을 취향의 언어로 연결 (단정한 인상, 편안한 실루엣 등)</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:start;">
+              <span style="color:var(--accent); flex-shrink:0;">•</span>
+              <span style="color:var(--text-body);">과장 추천("강추", "꼭 소장하세요") 및 근거 없는 안심 표현 금지</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:start;">
+              <span style="color:var(--accent); flex-shrink:0;">•</span>
+              <span style="color:var(--text-body);">사이즈 업/다운 제안 금지 — 현재 상품 기준의 착용감만 설명</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Verdict Color Table -->
+        <div class="card reveal stagger-3" style="padding:20px;">
+          <div style="font-size:13px; font-weight:700; margin-bottom:12px; color:var(--text-sub);">5단계 판정 색상</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:center; gap:10px; font-size:12px;">
+              <span class="color-swatch" style="background:#EA580C;"></span>
+              <span style="color:var(--text-body); width:140px;">타이트한 편</span>
+              <span style="color:var(--text-muted);">게이지 10%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; font-size:12px;">
+              <span class="color-swatch" style="background:#FB923C;"></span>
+              <span style="color:var(--text-body); width:140px;">약간 타이트한 편</span>
+              <span style="color:var(--text-muted);">게이지 30%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; font-size:12px;">
+              <span class="color-swatch" style="background:#4ADE80;"></span>
+              <span style="color:var(--text-body); width:140px;">잘 맞는 편</span>
+              <span style="color:var(--text-muted);">게이지 50%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; font-size:12px;">
+              <span class="color-swatch" style="background:#60A5FA;"></span>
+              <span style="color:var(--text-body); width:140px;">약간 여유 있는 편</span>
+              <span style="color:var(--text-muted);">게이지 70%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; font-size:12px;">
+              <span class="color-swatch" style="background:#818CF8;"></span>
+              <span style="color:var(--text-body); width:140px;">크게 느껴질 수 있음</span>
+              <span style="color:var(--text-muted);">게이지 90%</span>
+            </div>
+          </div>
+        </div>
+        <div class="callout reveal stagger-4" style="margin-top:16px;">
+          <strong>빨강 사용 금지</strong> — 타이트 판정도 주황으로 통일하여 "사지 마" 시그널을 회피합니다.
+        </div>
+      </div>
+      <div class="mockup-col" style="display:flex; justify-content:center;">
+        <div class="phone-mockup reveal-mockup stagger-2" style="min-height:620px;">
+          <div class="phone-notch"></div>
+          <div class="phone-screen" style="background:#fff; padding-top:30px; position:relative;">
+            <!-- Overlay -->
+            <div style="position:absolute; inset:0; background:rgba(0,0,0,0.4); z-index:1; border-radius:32px;"></div>
+            <!-- Bottom Sheet Result -->
+            <div style="position:absolute; bottom:0; left:0; right:0; background:#fff; border-radius:20px 20px 0 0; z-index:2; padding:0 0 16px;">
+              <!-- Handle -->
+              <div style="display:flex; justify-content:center; padding:10px 0 4px;">
+                <div style="width:36px; height:4px; background:#ddd; border-radius:2px;"></div>
+              </div>
+              <!-- Title bar -->
+              <div style="padding:0 18px 10px; display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:15px; font-weight:700;">핏 확인 결과</span>
+                  <span style="font-size:9px; border:1px solid #d1d5db; color:#999; padding:1px 7px; border-radius:100px; font-weight:600;">Beta</span>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </div>
+              <!-- Verdict Badge -->
+              <div style="text-align:center; padding:8px 18px 14px;">
+                <div style="display:inline-flex; align-items:center; gap:5px; padding:6px 14px; border-radius:100px; background:#F0FDF4;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
+                  <span style="font-size:13px; font-weight:700; color:#166534;">잘 맞는 편이에요</span>
+                </div>
+              </div>
+              <!-- Gauge -->
+              <div style="padding:0 18px 14px;">
+                <div style="border:1px solid #e5e7eb; border-radius:10px; padding:12px 14px;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                    <span style="font-size:10px; font-weight:600; color:#999;">사이즈 적합도</span>
+                    <span style="font-size:11px; font-weight:700; color:#111;">잘 맞는 편</span>
+                  </div>
+                  <div style="height:6px; border-radius:3px; position:relative; background:linear-gradient(90deg,#fed7aa 0%,#bbf7d0 40%,#bbf7d0 60%,#bfdbfe 80%,#c7d2fe 100%);">
+                    <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:16px; height:16px; background:#1A1A1A; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.2);"></div>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; margin-top:5px; font-size:8px; color:#bbb;">
+                    <span>타이트</span>
+                    <span>약간 타이트</span>
+                    <span>잘 맞음</span>
+                    <span>약간 여유</span>
+                    <span>크게 느껴짐</span>
+                  </div>
+                </div>
+              </div>
+              <!-- MD Comment -->
+              <div style="margin:0 18px 10px; background:#f9fafb; border-radius:10px; padding:10px 12px; display:flex; gap:8px; align-items:flex-start;">
+                <div style="width:22px; height:22px; border-radius:50%; background:#1A1A1A; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">
+                  <span style="font-size:8px; font-weight:700; color:#fff;">MD</span>
+                </div>
+                <div style="flex:1;">
+                  <div style="font-size:10px; color:#999; margin-bottom:2px; font-weight:600;">MD의 한마디</div>
+                  <div style="font-size:11px; color:#555; line-height:1.5;">어깨 라인은 여유 있게 떨어지되 가슴 단면은 몸에 정갈하게 안착되어 단정한 실루엣을 연출합니다.</div>
+                </div>
+              </div>
+              <!-- Disclaimer -->
+              <div style="text-align:center; font-size:9px; color:#ccc; margin-bottom:10px;">핏 분석 AI가 제공하는 참고 정보입니다</div>
+              <!-- CTAs -->
+              <div style="padding:0 18px; display:flex; gap:8px;">
+                <div style="padding:11px 16px; border-radius:14px; border:1px solid #d1d5db; text-align:center; font-size:12px; font-weight:600; color:#555; flex-shrink:0;">다시 확인</div>
+                <div style="flex:1; padding:11px; border-radius:14px; background:#1A1A1A; text-align:center; font-size:12px; font-weight:700; color:#fff;">장바구니 담기</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================================================================
+     SEC 09 — SCREEN 05 (결과 반영)
+     ==================================================================== -->
+<section class="section" id="screen05">
+  <div class="container">
+    <div class="two-col" style="grid-template-columns: 500px 1fr;">
+      <div class="mockup-col">
+        <div class="ba-container reveal-mockup" style="justify-content:center;">
+          <!-- Before -->
+          <div>
+            <div class="ba-label">Before</div>
+            <div style="width:210px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px 14px; box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:26px; height:26px; border-radius:50%; background:#F7E636; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div style="flex:1;">
+                  <div style="font-size:11px; font-weight:600; color:#111;">이 사이즈, 나한테 맞을까?</div>
+                  <div style="font-size:9px; color:#999; margin-top:2px;">키·몸무게만 입력하면 바로 확인돼요</div>
+                </div>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
+              </div>
+            </div>
+          </div>
+          <!-- Arrow -->
+          <div style="padding-top:24px;">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <path d="M12 16h8m0 0l-3-3m3 3l-3 3" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <!-- After -->
+          <div>
+            <div class="ba-label" style="color:var(--accent);">After</div>
+            <div style="width:210px; background:#FFF7ED; border:1px solid #fed7aa; border-radius:14px; padding:12px 14px; box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:26px; height:26px; border-radius:50%; background:#FB923C; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div style="flex:1;">
+                  <div style="font-size:11px; font-weight:600; color:#9a3412;">약간 타이트한 편이에요</div>
+                  <div style="font-size:9px; color:#FB923C; margin-top:2px;">다시 확인하기</div>
+                </div>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FB923C" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="overline reveal">Screen 05</div>
+        <h2 class="t-h1 reveal stagger-1" style="margin-bottom:16px;">바텀시트를 닫아도,<br>판정은 남아 있다</h2>
+        <p class="t-body reveal stagger-2" style="margin-bottom:24px;">
+          결과를 확인한 뒤 바텀시트를 닫으면, 미니 CTA가 판정 결과를 반영한 상태로 변환됩니다.
+        </p>
+        <p class="t-body reveal stagger-3" style="margin-bottom:24px;">
+          판정 색상 배경과 텍스트로 "확인 완료" 상태를 시각적으로 전달합니다. 다시 클릭하면 바텀시트가 재오픈됩니다.
+        </p>
+        <div class="callout reveal stagger-4">
+          판정별 색상이 미니 CTA에도 연동됩니다. 타이트 → 주황, 잘 맞음 → 초록, 여유 → 파랑, 큼 → 인디고.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================================================================
+     SEC 10 — DESIGN SYSTEM
+     ==================================================================== -->
+<section class="section" id="design">
+  <div class="container" style="width:100%;">
+    <div style="text-align:center; margin-bottom:80px;">
+      <div class="overline reveal" style="justify-content:center;">Design System</div>
+      <h2 class="t-h1 reveal stagger-1" style="margin-bottom:16px;">불안을 줄이는 디자인 규칙</h2>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:20px; max-width:1100px; margin:0 auto;">
+      <div class="principle-card reveal stagger-1">
+        <div class="principle-icon">💡</div>
+        <div style="font-size:15px; font-weight:700; margin-bottom:8px;">Anxiety → Confidence</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">사이즈 불안을 핏 확신으로 전환하여 구매전환율을 높입니다.</p>
+      </div>
+      <div class="principle-card reveal stagger-2">
+        <div class="principle-icon">📱</div>
+        <div style="font-size:15px; font-weight:700; margin-bottom:8px;">Zero Page Transition</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">바텀시트로 페이지 이탈 없이 전체 플로우를 완료합니다.</p>
+      </div>
+      <div class="principle-card reveal stagger-3">
+        <div class="principle-icon">🚫</div>
+        <div style="font-size:15px; font-weight:700; margin-bottom:8px;">빨강 금지</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">타이트 판정도 주황으로. 빨강은 "구매 경고" 시그널이므로 사용하지 않습니다.</p>
+      </div>
+      <div class="principle-card reveal stagger-4">
+        <div class="principle-icon">👕</div>
+        <div style="font-size:15px; font-weight:700; margin-bottom:8px;">사이즈 대안 금지</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">리세일 의류 특성상 1개 사이즈만 존재. 다른 사이즈를 제안하지 않습니다.</p>
+      </div>
+      <div class="principle-card reveal">
+        <div class="principle-icon">🛡️</div>
+        <div style="font-size:15px; font-weight:700; margin-bottom:8px;">Disclaimer → Reassurance</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">"정확하지 않을 수 있습니다" 대신 "최초 1회 무료 반품"으로 안심을 줍니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================================================================
+     SEC 11 — ARCHITECTURE
+     ==================================================================== -->
+<section class="section" id="arch">
+  <div class="container" style="width:100%;">
+    <div style="text-align:center; margin-bottom:80px;">
+      <div class="overline reveal" style="justify-content:center;">Architecture</div>
+      <h2 class="t-h1 reveal stagger-1" style="margin-bottom:16px;">단일 HTML, 하나의 파일로 완결</h2>
+    </div>
+    <div class="arch-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:40px; max-width:960px; margin:0 auto;">
+      <!-- Tech Stack -->
+      <div class="card reveal stagger-1">
+        <div style="font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:16px;">기술 스택</div>
+        <table class="tech-table">
+          <tr><th>UI</th><td>HTML + Tailwind CSS (CDN)</td></tr>
+          <tr><th>Logic</th><td>Vanilla JavaScript</td></tr>
+          <tr><th>AI Model</th><td>Gemini 3.1 Flash Lite Preview</td></tr>
+          <tr><th>Fallback</th><td>회귀분석 기반 폴백</td></tr>
+          <tr><th>Font</th><td>Pretendard (CDN)</td></tr>
+          <tr><th>Deploy</th><td>단일 HTML 파일</td></tr>
+        </table>
+      </div>
+      <!-- Prompt Structure -->
+      <div class="card reveal stagger-2">
+        <div style="font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:16px;">프롬프트 구조</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="background:var(--surface-raised); padding:12px 16px; border-radius:10px; font-size:13px;">
+            <div style="color:var(--accent); font-weight:700; margin-bottom:4px;">역할 설정</div>
+            <div style="color:var(--text-sub);">15년 경력 피팅 어드바이저</div>
+          </div>
+          <div style="text-align:center; color:var(--text-muted);">↓</div>
+          <div style="background:var(--surface-raised); padding:12px 16px; border-radius:10px; font-size:13px;">
+            <div style="color:var(--accent); font-weight:700; margin-bottom:4px;">복종 분기 (8개)</div>
+            <div style="color:var(--text-sub);">일반 4 + 골프 4 전용 프롬프트</div>
+          </div>
+          <div style="text-align:center; color:var(--text-muted);">↓</div>
+          <div style="background:var(--surface-raised); padding:12px 16px; border-radius:10px; font-size:13px;">
+            <div style="color:var(--accent); font-weight:700; margin-bottom:4px;">입력 데이터</div>
+            <div style="color:var(--text-sub);">고객 체형 + 상품 실측</div>
+          </div>
+          <div style="text-align:center; color:var(--text-muted);">↓</div>
+          <div style="background:var(--surface-raised); padding:12px 16px; border-radius:10px; font-size:13px;">
+            <div style="color:var(--accent); font-weight:700; margin-bottom:4px;">출력</div>
+            <div style="color:var(--text-sub);">5단계 판정 + MD의 한마디</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Cost -->
+    <div style="max-width:960px; margin:60px auto 0;">
+      <div class="card reveal stagger-3">
+        <div style="font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:16px;">💰 LLM API 예상 호출 비용</div>
+        <div style="font-size:14px; color:var(--text-body); margin-bottom:16px; line-height:1.7;">
+          모델: <span style="color:var(--accent); font-weight:600;">Gemini 3.1 Flash Lite Preview</span><br>
+          1회 호출당 Input ~3,675 tokens (시스템 프롬프트 ~3,500 + 유저 입력 ~175) / Output ~140 tokens
+        </div>
+        <table class="tech-table" style="margin-bottom:20px;">
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+            <th style="color:var(--text-sub); font-weight:600; padding:10px 16px;">시나리오</th>
+            <th style="color:var(--text-sub); font-weight:600; padding:10px 16px;">일 호출</th>
+            <th style="color:var(--text-sub); font-weight:600; padding:10px 16px;">월 호출</th>
+            <th style="color:var(--text-sub); font-weight:600; padding:10px 16px;">월 비용 (USD)</th>
+            <th style="color:var(--text-sub); font-weight:600; padding:10px 16px;">월 비용 (KRW)</th>
+          </tr>
+          <tr><th>소규모</th><td>100회</td><td>3,000회</td><td>$3.39</td><td style="color:var(--accent); font-weight:700;">약 4,741원</td></tr>
+          <tr><th>중규모</th><td>500회</td><td>15,000회</td><td>$16.93</td><td style="color:var(--accent); font-weight:700;">약 23,704원</td></tr>
+          <tr><th>대규모</th><td>1,000회</td><td>30,000회</td><td>$33.86</td><td style="color:var(--accent); font-weight:700;">약 47,408원</td></tr>
+          <tr><th>초대규모</th><td>5,000회</td><td>150,000회</td><td>$169.31</td><td style="color:var(--accent); font-weight:700;">약 237,038원</td></tr>
+        </table>
+        <div style="font-size:12px; color:var(--text-muted); line-height:1.6;">
+          * Gemini 3.1 Flash Lite Preview 실제 가격 기준 (Input $0.25/1M tokens, Output $1.50/1M tokens)<br>
+          * 1회당 비용: Input $0.00091875 + Output $0.00021 = 약 $0.001129<br>
+          * 한국어 토큰 효율: 1글자 ≈ 1.75 tokens 적용 · 환율: 1 USD ≈ 1,400 KRW<br>
+          * 비용 절감 팁: 더 저렴한 이전 세대 모델(예: Gemini 2.5 Flash-Lite, $0.10/$0.40)로 전환 시 현재 예산에서 약 60% 이상 추가 절감 가능
+        </div>
+      </div>
+    </div>
+
+    <!-- Responsive note -->
+    <div style="max-width:960px; margin:40px auto 0;">
+      <div class="callout reveal stagger-4">
+        하루 1,000회 호출 시 월 약 47,000원. 이전 세대 모델(Gemini 2.5 Flash-Lite)로 전환하면 60% 이상 추가 절감 가능.<br>
+        프로토타입은 클라이언트에서 직접 호출 (데모용). 프로덕션에서는 서버사이드로 전환 후 Next.js 14 + Supabase 적용 예정.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ====================================================================
+     SEC 12 — DEMO & NEXT
+     ==================================================================== -->
+<section class="section" id="demo" style="min-height:auto; padding:120px 0 160px;">
+  <div class="container" style="width:100%;">
+    <div style="text-align:center; max-width:640px; margin:0 auto;">
+      <div class="overline reveal" style="justify-content:center;">Demo & Next Steps</div>
+      <h2 class="t-h1 reveal stagger-1" style="margin-bottom:24px;">직접 써보세요</h2>
+      <p class="t-body reveal stagger-2" style="margin:0 auto 40px;">
+        프로토타입에서 실제 AI 핏 판정을 체험할 수 있습니다. 성별, 키, 몸무게를 입력하면 Gemini AI가 실시간으로 핏을 분석합니다.
+      </p>
+      <div class="reveal stagger-3" style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+        <a href="https://fitcheck-1ff.pages.dev/" target="_blank" style="display:inline-flex; align-items:center; gap:8px; padding:16px 32px; border-radius:16px; background:var(--accent); color:#000; font-weight:700; font-size:15px; text-decoration:none; transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+          프로토타입 체험하기
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m0 0l-5-5m5 5l-5 5"/></svg>
+        </a>
+      </div>
+
+      <!-- Test App -->
+      <div class="card reveal stagger-4" style="margin-top:48px; text-align:left;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+          <div style="font-size:13px; font-weight:700; color:var(--accent);">🧪 AI 정확도 테스트 앱</div>
+          <span style="font-size:9px; border:1px solid var(--border-subtle); color:var(--text-muted); padding:1px 7px; border-radius:100px; font-weight:600;">Beta</span>
+        </div>
+        <p style="font-size:14px; color:var(--text-body); line-height:1.7; margin-bottom:16px;">
+          구성원이 직접 <strong>자기 옷의 실측</strong>을 입력하고 AI 판정 정확도를 검증할 수 있는 테스트 도구입니다.
+        </p>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+          <div style="display:flex; align-items:start; gap:10px;">
+            <div style="width:22px; height:22px; border-radius:6px; background:var(--surface-raised); color:var(--text-sub); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0;">1</div>
+            <div style="font-size:13px; color:var(--text-body);"><strong>내 정보</strong> — 성별, 키, 몸무게 입력</div>
+          </div>
+          <div style="display:flex; align-items:start; gap:10px;">
+            <div style="width:22px; height:22px; border-radius:6px; background:var(--surface-raised); color:var(--text-sub); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0;">2</div>
+            <div style="font-size:13px; color:var(--text-body);"><strong>옷 정보</strong> — 복종 선택(일반/골프 8종) + 실측 직접 입력</div>
+          </div>
+          <div style="display:flex; align-items:start; gap:10px;">
+            <div style="width:22px; height:22px; border-radius:6px; background:var(--accent); color:#000; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0;">3</div>
+            <div style="font-size:13px; color:var(--text-body);"><strong>실제 착용 느낌</strong> — AI 결과 전에 본인 체감 판정을 먼저 선택 (편향 방지)</div>
+          </div>
+        </div>
+        <div class="callout" style="margin-bottom:20px;">
+          본인의 체감 판정을 먼저 기록한 후 AI 판정을 비교합니다.<br>이를 통해 AI가 실제 착용감을 얼마나 정확히 예측하는지 편향 없이 검증할 수 있습니다.
+        </div>
+        <a href="https://fitcheck-1ff.pages.dev/fit-check-test" target="_blank" style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; border-radius:12px; border:1px solid var(--border-subtle); background:var(--card); color:var(--text); font-weight:600; font-size:14px; text-decoration:none; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border-subtle)'">
+          테스트 앱 열기
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m0 0l-5-5m5 5l-5 5"/></svg>
+        </a>
+      </div>
+
+      <!-- Next Steps -->
+      <div class="card reveal stagger-4" style="margin-top:64px; text-align:left;">
+        <div style="font-size:13px; font-weight:700; color:var(--accent); margin-bottom:16px;">Next Steps</div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; gap:12px; align-items:start;">
+            <div style="width:24px; height:24px; border-radius:6px; background:var(--accent); color:#000; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0;">1</div>
+            <div>
+              <div style="font-size:14px; font-weight:600;">프로덕션 전환</div>
+              <div style="font-size:12px; color:var(--text-sub); margin-top:2px;">Next.js 14 + TypeScript + Supabase 마이그레이션</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:start;">
+            <div style="width:24px; height:24px; border-radius:6px; background:var(--surface-raised); color:var(--text-sub); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0;">2</div>
+            <div>
+              <div style="font-size:14px; font-weight:600;">프롬프트 고도화</div>
+              <div style="font-size:12px; color:var(--text-sub); margin-top:2px;">테스트 데이터 57건 기반 판정 정확도 튜닝</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:start;">
+            <div style="width:24px; height:24px; border-radius:6px; background:var(--surface-raised); color:var(--text-sub); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0;">3</div>
+            <div>
+              <div style="font-size:14px; font-weight:600;">A/B 테스트</div>
+              <div style="font-size:12px; color:var(--text-sub); margin-top:2px;">구매전환율 리프트 측정</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keyboard shortcut hint -->
+      <div class="reveal stagger-4" style="margin-top:40px; text-align:center; font-size:12px; color:var(--text-muted);">
+        Last updated: 2026.03.22 22:40
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ FOOTER ============ -->
+<footer style="padding:40px 0; border-top:1px solid var(--border-subtle); text-align:center;">
+  <div class="container">
+    <div style="font-size:12px; color:var(--text-muted);">
+      FitCheck for Antures — Built by blue · 2026
+    </div>
+  </div>
+</footer>
+
+
+<script>
+// ===================== INTERSECTION OBSERVER =====================
+const observerOptions = { threshold: 0.15, rootMargin: '0px 0px -50px 0px' };
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, observerOptions);
+
+document.querySelectorAll('.reveal, .reveal-mockup').forEach(el => observer.observe(el));
+
+// ===================== SCROLL PROGRESS =====================
+const progressBar = document.getElementById('scroll-progress');
+const progressRing = document.getElementById('progressRing');
+const progressText = document.getElementById('progressText');
+const circumference = 2 * Math.PI * 20; // r=20
+
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = Math.min(scrollTop / docHeight, 1);
+  progressBar.style.width = (progress * 100) + '%';
+
+  // Ring
+  const offset = circumference - (progress * circumference);
+  progressRing.style.strokeDashoffset = offset;
+  progressText.textContent = Math.round(progress * 100) + '%';
+}
+
+// ===================== SCROLL SPY =====================
+const sections = document.querySelectorAll('.section[id]');
+const navLinks = document.querySelectorAll('.top-nav .nav-links a[data-nav]');
+const sideDots = document.querySelectorAll('.side-dot[data-target]');
+const tocLinks = document.querySelectorAll('.toc-panel a[data-toc]');
+
+function updateScrollSpy() {
+  let current = '';
+  sections.forEach(section => {
+    const sectionTop = section.offsetTop - 100;
+    if (window.scrollY >= sectionTop) {
+      current = section.id;
+    }
+  });
+
+  navLinks.forEach(link => {
+    link.classList.toggle('active', link.dataset.nav === current);
+  });
+
+  sideDots.forEach(dot => {
+    dot.classList.toggle('active', dot.dataset.target === current);
+  });
+
+  tocLinks.forEach(link => {
+    link.classList.toggle('active', link.dataset.toc === current);
+  });
+}
+
+// Side dot click
+sideDots.forEach(dot => {
+  dot.addEventListener('click', () => {
+    const target = document.getElementById(dot.dataset.target);
+    if (target) target.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+// ===================== TOC PANEL (Gift #1) =====================
+const tocPanel = document.getElementById('tocPanel');
+let tocOpen = false;
+
+function toggleToc() {
+  tocOpen = !tocOpen;
+  tocPanel.classList.toggle('open', tocOpen);
+}
+
+// Close TOC on link click
+tocPanel.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    tocOpen = false;
+    tocPanel.classList.remove('open');
+  });
+});
+
+// Close TOC on click outside
+document.addEventListener('click', (e) => {
+  if (tocOpen && !tocPanel.contains(e.target) && !e.target.closest('[aria-label="목차 열기"]')) {
+    tocOpen = false;
+    tocPanel.classList.remove('open');
+  }
+});
+
+// ===================== EVENT LISTENERS =====================
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      updateProgress();
+      updateScrollSpy();
+      ticking = false;
+    });
+    ticking = true;
+  }
+}, { passive: true });
+
+updateProgress();
+updateScrollSpy();
+</script>
+</body>
+</html>
