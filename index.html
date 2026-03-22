@@ -381,7 +381,10 @@
             <!-- Proto link -->
             <div class="reveal mb-10">
               <h3 class="text-[13px] font-semibold text-pebble tracking-[0.03em] uppercase mb-3">프로토타입</h3>
-              <p class="text-[15px] text-stone leading-[1.65]">${p.protoNote}</p>
+              ${p.protoUrl
+                ? `<a href="${p.protoUrl}" target="${p.protoUrl.startsWith('http') ? '_blank' : '_self'}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-navy text-white font-semibold text-[15px] hover:bg-navy-hover transition-colors">${p.protoNote} <span class="text-[14px]">→</span></a>`
+                : `<p class="text-[15px] text-stone leading-[1.65]">${p.protoNote}</p>`
+              }
             </div>
 
             <!-- Next Step -->
